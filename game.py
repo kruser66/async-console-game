@@ -2,6 +2,66 @@ import time
 import asyncio
 import curses
 from random import randint, choice
+from itertools import cycle
+
+
+def read_frame(filename):
+    with open(filename, 'r') as f:
+        frame = f.read()
+    return frame
+
+
+def draw_frame(canvas, start_row, start_column, text, negative=False):
+    """Draw multiline text fragment on canvas, erase text instead of drawing if negative=True is specified."""
+    
+    rows_number, columns_number = canvas.getmaxyx()
+
+    for row, line in enumerate(text.splitlines(), round(start_row)):
+        if row < 0:
+            continue
+
+        if row >= rows_number:
+            break
+
+        for column, symbol in enumerate(line, round(start_column)):
+            if column < 0:
+                continue
+
+            if column >= columns_number:
+                break
+                
+            if symbol == ' ':
+                continue
+
+            # Check that current position it is not in a lower right corner of the window
+            # Curses will raise exception in that case. Don`t ask why…
+            # https://docs.python.org/3/library/curses.html#curses.window.addch
+            if row == rows_number - 1 and column == columns_number - 1:
+                continue
+
+            symbol = symbol if not negative else ' '
+            canvas.addch(row, column, symbol)
+
+
+async def animate_spaceship(canvas, frames, row=20, column=20):
+
+    animate = cycle(frames)
+
+    first = next(animate)
+    draw_frame(canvas, row, column, first)
+    for _ in range(10):
+        await asyncio.sleep(0)
+    
+    while True:
+        second = next(animate)
+
+        draw_frame(canvas, row, column, first, negative=True)
+        draw_frame(canvas, row, column, second)
+        first = second
+        canvas.refresh()
+
+        for _ in range(10):
+            await asyncio.sleep(0)
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
@@ -23,6 +83,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - 1, columns - 1
+
+    for _ in range(randint(1, 20)):
+        await asyncio.sleep(0)
 
     curses.beep()
 
@@ -61,17 +124,28 @@ def draw(canvas):
     canvas.border()
     rows, columns = canvas.getmaxyx()
 
+    spaceship = [
+        read_frame('frames/rocket_frame_1.txt'),
+        read_frame('frames/rocket_frame_2.txt')
+    ]
+
     courutines = []
     for item in range(300):
         courutines.append(blink(canvas, randint(1, rows-2), randint(1, columns-2), choice('+*.:')))
+    courutines.append(animate_spaceship(canvas, spaceship))
     courutines.append(fire(canvas, rows-2, columns/2))
+    courutines.append(fire(canvas, rows-2, columns-10))
 
     while True:
-        for courutine in courutines.copy():
+        stop = []
+        for index, courutine in enumerate(courutines.copy()):
+            if courutine in stop:
+                continue
             try:
                 courutine.send(None)
             except StopIteration:
-                courutines.pop(-1)
+                stop.append(courutine)
+                courutines.pop(index)
             canvas.refresh()
         time.sleep(0.1)
 
