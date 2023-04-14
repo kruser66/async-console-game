@@ -5,6 +5,13 @@ from random import randint, choice
 from itertools import cycle
 
 
+SPACE_KEY_CODE = 32
+LEFT_KEY_CODE = 260
+RIGHT_KEY_CODE = 261
+UP_KEY_CODE = 259
+DOWN_KEY_CODE = 258
+
+
 def read_frame(filename):
     with open(filename, 'r') as f:
         frame = f.read()
@@ -43,29 +50,85 @@ def draw_frame(canvas, start_row, start_column, text, negative=False):
             canvas.addch(row, column, symbol)
 
 
+def get_frame_size(text):
+    """Calculate size of multiline text fragment, return pair — number of rows and colums."""
+    
+    lines = text.splitlines()
+    rows = len(lines)
+    columns = max([len(line) for line in lines])
+    return rows, columns
+
+
+def read_controls(canvas):
+    """Read keys pressed and returns tuple witl controls state."""
+    
+    rows_direction = columns_direction = 0
+    space_pressed = False
+
+    while True:
+        pressed_key_code = canvas.getch()
+
+        if pressed_key_code == -1:
+            # https://docs.python.org/3/library/curses.html#curses.window.getch
+            break
+
+        if pressed_key_code == UP_KEY_CODE:
+            rows_direction = -1
+
+        if pressed_key_code == DOWN_KEY_CODE:
+            rows_direction = 1
+
+        if pressed_key_code == RIGHT_KEY_CODE:
+            columns_direction = 1
+
+        if pressed_key_code == LEFT_KEY_CODE:
+            columns_direction = -1
+
+        if pressed_key_code == SPACE_KEY_CODE:
+            space_pressed = True
+    
+    return rows_direction, columns_direction, space_pressed
+
+
 async def animate_spaceship(canvas, frames, row=20, column=20):
 
     animate = cycle(frames)
-
     first = next(animate)
+    max_rows, max_columns = canvas.getmaxyx()
+    frame_row, frame_col = get_frame_size(first)
+
     draw_frame(canvas, row, column, first)
-    for _ in range(10):
-        await asyncio.sleep(0)
+    await asyncio.sleep(0)
     
     while True:
         second = next(animate)
 
         draw_frame(canvas, row, column, first, negative=True)
+
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)
+        
+        if rows_direction or columns_direction:
+            row += rows_direction
+            column += columns_direction
+
+        if row <= 0 or row > max_rows - frame_row - 1:
+            row -= rows_direction
+
+        if column <= 1 or column > max_columns - frame_col -1:
+            column -= columns_direction        
+        
         draw_frame(canvas, row, column, second)
         first = second
         canvas.refresh()
 
-        for _ in range(10):
-            await asyncio.sleep(0)
+        await asyncio.sleep(0)
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
+
+    for _ in range(randint(1, 100)):
+        await asyncio.sleep(0)
 
     row, column = start_row, start_column
 
@@ -83,9 +146,6 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
     rows, columns = canvas.getmaxyx()
     max_row, max_column = rows - 1, columns - 1
-
-    for _ in range(randint(1, 20)):
-        await asyncio.sleep(0)
 
     curses.beep()
 
@@ -122,7 +182,8 @@ async def blink(canvas, row, column, symbol='*'):
 def draw(canvas):
     curses.curs_set(False)
     canvas.border()
-    rows, columns = canvas.getmaxyx()
+    canvas.nodelay(True)
+    max_rows, max_columns = canvas.getmaxyx()
 
     spaceship = [
         read_frame('frames/rocket_frame_1.txt'),
@@ -131,10 +192,11 @@ def draw(canvas):
 
     courutines = []
     for item in range(300):
-        courutines.append(blink(canvas, randint(1, rows-2), randint(1, columns-2), choice('+*.:')))
-    courutines.append(animate_spaceship(canvas, spaceship))
-    courutines.append(fire(canvas, rows-2, columns/2))
-    courutines.append(fire(canvas, rows-2, columns-10))
+        courutines.append(blink(canvas, randint(1, max_rows-2), randint(1, max_columns-2), choice('+*.:')))
+    courutines.append(animate_spaceship(canvas, spaceship, max_rows/2-4, max_columns/2-2))
+    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
+    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
+    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
 
     while True:
         stop = []
@@ -147,6 +209,7 @@ def draw(canvas):
                 stop.append(courutine)
                 courutines.pop(index)
             canvas.refresh()
+        
         time.sleep(0.1)
 
 
