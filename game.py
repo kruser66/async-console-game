@@ -194,8 +194,8 @@ def draw(canvas):
     for item in range(300):
         courutines.append(blink(canvas, randint(1, max_rows-2), randint(1, max_columns-2), choice('+*.:')))
     courutines.append(animate_spaceship(canvas, spaceship, max_rows/2-4, max_columns/2-2))
-    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
-    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
+    
+    # имитация выстрела для отработки StopIteration
     courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
 
     while True:
