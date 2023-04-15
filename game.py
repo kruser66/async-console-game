@@ -96,6 +96,12 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     first = next(animate)
     max_rows, max_columns = canvas.getmaxyx()
     frame_row, frame_col = get_frame_size(first)
+    border_row = max_rows - frame_row - 1
+    border_col = max_columns - frame_col -1
+    
+    offset_row = 2
+    offset_col = 4
+    
 
     draw_frame(canvas, row, column, first)
     await asyncio.sleep(0)
@@ -107,19 +113,16 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
 
         rows_direction, columns_direction, space_pressed = read_controls(canvas)
         
-        if rows_direction or columns_direction:
-            row += rows_direction
-            column += columns_direction
+        if rows_direction > 0 or columns_direction > 0:
+            row = min(row + rows_direction * offset_row, border_row)
+            column = min(column + columns_direction * offset_col, border_col)
 
-        if row <= 0 or row > max_rows - frame_row - 1:
-            row -= rows_direction
-
-        if column <= 1 or column > max_columns - frame_col -1:
-            column -= columns_direction        
+        elif rows_direction < 0 or columns_direction < 0:
+            row = max(row + rows_direction * offset_row, 1)
+            column = max(column + columns_direction * offset_col, 1)      
         
         draw_frame(canvas, row, column, second)
         first = second
-        canvas.refresh()
 
         await asyncio.sleep(0)
 
@@ -127,16 +130,14 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
     """Display animation of gun shot, direction and speed can be specified."""
 
-    for _ in range(randint(1, 100)):
-        await asyncio.sleep(0)
-
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
-    await asyncio.sleep(0)
-
+    for _ in range(5):
+        await asyncio.sleep(0)
     canvas.addstr(round(row), round(column), 'O')
-    await asyncio.sleep(0)
+    for _ in range(5):
+        await asyncio.sleep(0)
     canvas.addstr(round(row), round(column), ' ')
 
     row += rows_speed
@@ -157,9 +158,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
 
 
-async def blink(canvas, row, column, symbol='*'):
+async def blink(canvas, row, column, offset_tics=0, symbol='*'):
     while True:
-        for _ in range(randint(1, 20)):
+        for _ in range(offset_tics):
             await asyncio.sleep(0)
 
         canvas.addstr(row, column, symbol, curses.A_DIM)
@@ -185,29 +186,30 @@ def draw(canvas):
     canvas.nodelay(True)
     max_rows, max_columns = canvas.getmaxyx()
 
-    spaceship = [
-        read_frame('frames/rocket_frame_1.txt'),
-        read_frame('frames/rocket_frame_2.txt')
-    ]
+    frame1 = read_frame('frames/rocket_frame_1.txt')
+    frame2 = read_frame('frames/rocket_frame_2.txt')
+    spaceship = [frame1, frame1, frame2, frame2]
 
+    center_row = max_rows/2-4
+    center_col = max_columns/2-2
+    end_row = max_rows-2
+    end_col = max_columns-2
+    
     courutines = []
     for item in range(300):
-        courutines.append(blink(canvas, randint(1, max_rows-2), randint(1, max_columns-2), choice('+*.:')))
-    courutines.append(animate_spaceship(canvas, spaceship, max_rows/2-4, max_columns/2-2))
+        offset_tics = randint(1, 20)
+        courutines.append(blink(canvas, randint(1, end_row), randint(1, end_col), offset_tics, choice('+*.:')))
+    courutines.append(animate_spaceship(canvas, spaceship, center_row, center_col))
     
     # имитация выстрела для отработки StopIteration
     courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
 
     while True:
-        stop = []
         for index, courutine in enumerate(courutines.copy()):
-            if courutine in stop:
-                continue
             try:
                 courutine.send(None)
             except StopIteration:
-                stop.append(courutine)
-                courutines.pop(index)
+                courutines.remove(courutine)
             canvas.refresh()
         
         time.sleep(0.1)
