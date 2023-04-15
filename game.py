@@ -94,7 +94,9 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
 
     animate = cycle(frames)
     first = next(animate)
+    
     max_rows, max_columns = canvas.getmaxyx()
+    
     frame_row, frame_col = get_frame_size(first)
     border_row = max_rows - frame_row - 1
     border_col = max_columns - frame_col -1
@@ -102,24 +104,16 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     offset_row = 2
     offset_col = 4
     
-
     draw_frame(canvas, row, column, first)
     await asyncio.sleep(0)
     
     while True:
         second = next(animate)
-
         draw_frame(canvas, row, column, first, negative=True)
 
-        rows_direction, columns_direction, space_pressed = read_controls(canvas)
-        
-        if rows_direction > 0 or columns_direction > 0:
-            row = min(row + rows_direction * offset_row, border_row)
-            column = min(column + columns_direction * offset_col, border_col)
-
-        elif rows_direction < 0 or columns_direction < 0:
-            row = max(row + rows_direction * offset_row, 1)
-            column = max(column + columns_direction * offset_col, 1)      
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)       
+        row = max(1, min(row + rows_direction * offset_row, border_row))
+        column = max(1, min(column + columns_direction * offset_col, border_col))  
         
         draw_frame(canvas, row, column, second)
         first = second
@@ -189,23 +183,26 @@ def draw(canvas):
     frame1 = read_frame('frames/rocket_frame_1.txt')
     frame2 = read_frame('frames/rocket_frame_2.txt')
     spaceship = [frame1, frame1, frame2, frame2]
-
-    center_row = max_rows/2-4
-    center_col = max_columns/2-2
-    end_row = max_rows-2
-    end_col = max_columns-2
+    frame_row, frame_col = get_frame_size(frame1)
+    
+    srart_row = start_col = 1
+    border = 2
+    center_row = (max_rows - frame_row) // 2
+    center_col = (max_columns- frame_col) // 2
+    end_row = max_rows - border
+    end_col = max_columns - border
     
     courutines = []
     for item in range(300):
         offset_tics = randint(1, 20)
-        courutines.append(blink(canvas, randint(1, end_row), randint(1, end_col), offset_tics, choice('+*.:')))
+        courutines.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
     courutines.append(animate_spaceship(canvas, spaceship, center_row, center_col))
     
     # имитация выстрела для отработки StopIteration
-    courutines.append(fire(canvas, max_rows-2, randint(1, max_columns-1)))
+    courutines.append(fire(canvas, end_row, randint(start_col, end_col)))
 
     while True:
-        for index, courutine in enumerate(courutines.copy()):
+        for courutine in courutines.copy():
             try:
                 courutine.send(None)
             except StopIteration:
