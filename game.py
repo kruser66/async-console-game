@@ -207,8 +207,7 @@ def draw(canvas):
                 courutine.send(None)
             except StopIteration:
                 courutines.remove(courutine)
-            canvas.refresh()
-        
+        canvas.refresh()
         time.sleep(0.1)
 
 
