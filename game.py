@@ -11,6 +11,8 @@ RIGHT_KEY_CODE = 261
 UP_KEY_CODE = 259
 DOWN_KEY_CODE = 258
 
+COURUTINES = []
+
 
 def read_frame(filename):
     with open(filename, 'r') as f:
@@ -89,6 +91,27 @@ def read_controls(canvas):
     
     return rows_direction, columns_direction, space_pressed
 
+
+async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
+    """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
+    rows_number, columns_number = canvas.getmaxyx()
+
+    garbage_height, garbage_width = get_frame_size(garbage_frame)
+    
+    column = max(column, garbage_width // 2)
+    column = min(column, columns_number - (garbage_width // 2 + 1))
+
+    row = 1
+
+    while row < rows_number - (garbage_width // 2 + 1):
+        draw_frame(canvas, row, column, garbage_frame)
+        await asyncio.sleep(0)
+        draw_frame(canvas, row, column, garbage_frame, negative=True)
+        row += speed
+
+
+async def fill_orbit_with_garbage(canvas, frames):
+    pass
 
 async def animate_spaceship(canvas, frames, row=20, column=20):
 
@@ -180,33 +203,38 @@ def draw(canvas):
     canvas.nodelay(True)
     max_rows, max_columns = canvas.getmaxyx()
 
-    frame1 = read_frame('frames/rocket_frame_1.txt')
-    frame2 = read_frame('frames/rocket_frame_2.txt')
-    spaceship = [frame1, frame1, frame2, frame2]
-    frame_row, frame_col = get_frame_size(frame1)
+    # загрузка фреймов ракеты
+    rocket_frame_1 = read_frame('frames/rocket_frame_1.txt')
+    rocket_frame_2 = read_frame('frames/rocket_frame_2.txt')
+    spaceship = [rocket_frame_1, rocket_frame_1, rocket_frame_2, rocket_frame_2]
+    rocket_height, rocket_width = get_frame_size(rocket_frame_1)
+    
+    # загрузка фрейма мусора
+    trash_small = read_frame('frames/trash_small.txt')
     
     srart_row = start_col = 1
     border = 2
-    center_row = (max_rows - frame_row) // 2
-    center_col = (max_columns- frame_col) // 2
+    center_row = (max_rows - rocket_height) // 2
+    center_col = (max_columns- rocket_width) // 2
     end_row = max_rows - border
     end_col = max_columns - border
     
-    courutines = []
-    for item in range(300):
+
+    for item in range(200):
         offset_tics = randint(1, 20)
-        courutines.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
-    courutines.append(animate_spaceship(canvas, spaceship, center_row, center_col))
+        COURUTINES.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
+    COURUTINES.append(animate_spaceship(canvas, spaceship, center_row, center_col))
+    COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), trash_small))
     
     # имитация выстрела для отработки StopIteration
-    courutines.append(fire(canvas, end_row, randint(start_col, end_col)))
+    COURUTINES.append(fire(canvas, end_row, randint(start_col, end_col)))
 
     while True:
-        for courutine in courutines.copy():
+        for courutine in COURUTINES.copy():
             try:
                 courutine.send(None)
             except StopIteration:
-                courutines.remove(courutine)
+                COURUTINES.remove(courutine)
         canvas.refresh()
         time.sleep(0.1)
 
