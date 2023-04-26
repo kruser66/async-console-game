@@ -1,3 +1,4 @@
+import os
 import time
 import asyncio
 import curses
@@ -19,6 +20,11 @@ def read_frame(filename):
         frame = f.read()
     return frame
 
+
+def load_garbages():
+    
+    return [read_frame(os.path.join('frames',filename)) for filename in os.listdir('frames') if filename.startswith('trash_')]
+    
 
 def draw_frame(canvas, start_row, start_column, text, negative=False):
     """Draw multiline text fragment on canvas, erase text instead of drawing if negative=True is specified."""
@@ -93,13 +99,14 @@ def read_controls(canvas):
 
 
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
+    
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
     rows_number, columns_number = canvas.getmaxyx()
 
     garbage_height, garbage_width = get_frame_size(garbage_frame)
     
     column = max(column, garbage_width // 2)
-    column = min(column, columns_number - (garbage_width // 2 + 1))
+    column = min(column, columns_number - garbage_width - 1)
 
     row = 1
 
@@ -110,8 +117,16 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         row += speed
 
 
-async def fill_orbit_with_garbage(canvas, frames):
-    pass
+async def fill_orbit_with_garbage(canvas, garbages):
+    max_rows, max_columns = canvas.getmaxyx()  
+
+    while True:
+        for _ in range(randint(5, 30)):
+            await asyncio.sleep(0)
+        garbage = choice(garbages)
+        COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
+
+
 
 async def animate_spaceship(canvas, frames, row=20, column=20):
 
@@ -210,7 +225,7 @@ def draw(canvas):
     rocket_height, rocket_width = get_frame_size(rocket_frame_1)
     
     # загрузка фрейма мусора
-    trash_small = read_frame('frames/trash_small.txt')
+    garbages = load_garbages()
     
     srart_row = start_col = 1
     border = 2
@@ -224,7 +239,8 @@ def draw(canvas):
         offset_tics = randint(1, 20)
         COURUTINES.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
     COURUTINES.append(animate_spaceship(canvas, spaceship, center_row, center_col))
-    COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), trash_small))
+    COURUTINES.append(fill_orbit_with_garbage(canvas, garbages))
+
     
     # имитация выстрела для отработки StopIteration
     COURUTINES.append(fire(canvas, end_row, randint(start_col, end_col)))
