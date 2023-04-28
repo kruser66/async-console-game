@@ -153,11 +153,14 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     row_speed = col_speed = 0   
     while True:
 
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)
+        row_speed, col_speed = update_speed(row_speed, col_speed, rows_direction, columns_direction)
+        if space_pressed:
+            COURUTINES.append(fire(canvas, row, column + frame_col // 2, rows_speed=-1, columns_speed=0))           
+
         second = next(animate)
         draw_frame(canvas, row, column, first, negative=True)
 
-        rows_direction, columns_direction, space_pressed = read_controls(canvas)
-        row_speed, col_speed = update_speed(row_speed, col_speed, rows_direction, columns_direction)       
         row = max(1, min(row + row_speed * offset_row, border_row))
         column = max(1, min(column + col_speed * offset_col, border_col))  
         
@@ -173,9 +176,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
-    await sleep(5)
+    await sleep()
     canvas.addstr(round(row), round(column), 'O')
-    await sleep(5)
+    await sleep()
     canvas.addstr(round(row), round(column), ' ')
 
     row += rows_speed
