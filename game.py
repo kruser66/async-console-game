@@ -4,6 +4,7 @@ import asyncio
 import curses
 from random import randint, choice
 from itertools import cycle
+from physics import update_speed
 
 
 SPACE_KEY_CODE = 32
@@ -98,6 +99,11 @@ def read_controls(canvas):
     return rows_direction, columns_direction, space_pressed
 
 
+async def sleep(tics=1):
+    for _ in range(tics):
+        await asyncio.sleep(0)
+
+
 async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
     
     """Animate garbage, flying from top to bottom. Сolumn position will stay same, as specified on start."""
@@ -112,7 +118,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
     while row < rows_number - (garbage_width // 2 + 1):
         draw_frame(canvas, row, column, garbage_frame)
-        await asyncio.sleep(0)
+        await sleep()
         draw_frame(canvas, row, column, garbage_frame, negative=True)
         row += speed
 
@@ -121,11 +127,10 @@ async def fill_orbit_with_garbage(canvas, garbages):
     max_rows, max_columns = canvas.getmaxyx()  
 
     while True:
-        for _ in range(randint(5, 30)):
-            await asyncio.sleep(0)
+        offset = randint(5, 30)
+        await sleep(offset)
         garbage = choice(garbages)
         COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
-
 
 
 async def animate_spaceship(canvas, frames, row=20, column=20):
@@ -143,20 +148,23 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     offset_col = 4
     
     draw_frame(canvas, row, column, first)
-    await asyncio.sleep(0)
+    await sleep()
     
+    row_speed = col_speed = 0   
     while True:
+
         second = next(animate)
         draw_frame(canvas, row, column, first, negative=True)
 
-        rows_direction, columns_direction, space_pressed = read_controls(canvas)       
-        row = max(1, min(row + rows_direction * offset_row, border_row))
-        column = max(1, min(column + columns_direction * offset_col, border_col))  
+        rows_direction, columns_direction, space_pressed = read_controls(canvas)
+        row_speed, col_speed = update_speed(row_speed, col_speed, rows_direction, columns_direction)       
+        row = max(1, min(row + row_speed * offset_row, border_row))
+        column = max(1, min(column + col_speed * offset_col, border_col))  
         
         draw_frame(canvas, row, column, second)
         first = second
 
-        await asyncio.sleep(0)
+        await sleep()
 
 
 async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0):
@@ -165,11 +173,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
     row, column = start_row, start_column
 
     canvas.addstr(round(row), round(column), '*')
-    for _ in range(5):
-        await asyncio.sleep(0)
+    await sleep(5)
     canvas.addstr(round(row), round(column), 'O')
-    for _ in range(5):
-        await asyncio.sleep(0)
+    await sleep(5)
     canvas.addstr(round(row), round(column), ' ')
 
     row += rows_speed
@@ -184,7 +190,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
     while 1 < row < max_row and 1 < column < max_column:
         canvas.addstr(round(row), round(column), symbol)
-        await asyncio.sleep(0)
+        await sleep()
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
@@ -192,24 +198,20 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
 
 async def blink(canvas, row, column, offset_tics=0, symbol='*'):
     while True:
-        for _ in range(offset_tics):
-            await asyncio.sleep(0)
+
+        await sleep(offset_tics)
 
         canvas.addstr(row, column, symbol, curses.A_DIM)
-        for _ in range(20):
-            await asyncio.sleep(0)
+        await sleep(20)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
+        await sleep(3)
 
         canvas.addstr(row, column, symbol, curses.A_BOLD)
-        for _ in range(5):
-            await asyncio.sleep(0)
+        await sleep(5)
 
         canvas.addstr(row, column, symbol)
-        for _ in range(3):
-            await asyncio.sleep(0)
+        await sleep(3)
 
 
 def draw(canvas):
