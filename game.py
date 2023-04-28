@@ -152,13 +152,9 @@ async def years_counter(canvas):
     global YEAR
     
     while True:
-        if YEAR <= 2020:
-            phrase = PHRASES.get(YEAR, '')
-        if phrase:
-            year_text = f'{str(YEAR)} {phrase}'
-        else:
-            year_text = f'{str(YEAR)}                                         '
-        canvas.addstr(1, 1, year_text)
+        phrase = PHRASES.get(YEAR, '')
+        year_text = f'{str(YEAR)} {phrase}'
+        canvas.addstr(0, 1, year_text)
         await sleep(15)
         YEAR += 1
 
