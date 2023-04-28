@@ -82,7 +82,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
     garbage_height, garbage_width = get_frame_size(garbage_frame)
     
-    start_row = shift_row = 2
+    start_row = 1
     shift_col = 2
     column = max(column, shift_col)
     column = min(column, columns_number - garbage_width - (shift_col + 1))
@@ -123,8 +123,8 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     border_row = max_rows - frame_row - 1
     border_col = max_columns - frame_col -1
     
-    offset_row = 2
-    offset_col = 4
+    offset_row = 1
+    offset_col = 2
     
     draw_frame(canvas, row, column, first)
     await sleep()
@@ -185,6 +185,10 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
+        for obstacle in OBSTACLES:
+            if obstacle.has_collision(row, column):
+                row = 1
+            
 
 
 async def blink(canvas, row, column, offset_tics=0, symbol='*'):
