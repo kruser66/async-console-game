@@ -110,6 +110,11 @@ async def fill_orbit_with_garbage(canvas, garbages):
         COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
 
 
+async def game_over(canvas, row, column, frame):
+    while True:
+        draw_frame(canvas, row, column, frame)
+        await sleep()
+
 async def animate_spaceship(canvas, frames, row=20, column=20):
 
     animate = cycle(frames)
@@ -138,7 +143,14 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
 
         row = max(1, min(row + row_speed * offset_row, border_row))
         column = max(1, min(column + col_speed * offset_col, border_col))  
-        
+
+        for obstacle in OBSTACLES:
+            if obstacle.has_collision(row, column, frame_row, frame_col):
+                game_over_frame = read_frame('frames/game_over.txt')
+                width, height = get_frame_size(game_over_frame)
+                COURUTINES.append(game_over(canvas, (max_rows - width) // 2, (max_columns - height) // 2, game_over_frame))
+                return
+                                   
         draw_frame(canvas, row, column, second)
         first = second
         
