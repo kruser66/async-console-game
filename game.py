@@ -17,6 +17,7 @@ DOWN_KEY_CODE = 258
 
 COURUTINES = []
 OBSTACLES = []
+OBSTACLES_IN_LAST_COLLISIONS = []
 
 
 def read_frame(filename):
@@ -98,6 +99,10 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         draw_frame(canvas, row, column, garbage_frame, negative=True)
         row += speed
         barrier.row += speed
+        if barrier in OBSTACLES_IN_LAST_COLLISIONS:
+            OBSTACLES.remove(barrier)
+            OBSTACLES_IN_LAST_COLLISIONS.remove(barrier)
+            return
 
     OBSTACLES.remove(barrier)
 
@@ -187,6 +192,7 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         column += columns_speed
         for obstacle in OBSTACLES:
             if obstacle.has_collision(row, column):
+                OBSTACLES_IN_LAST_COLLISIONS.append(obstacle)
                 row = 1
             
 
@@ -239,7 +245,7 @@ def draw(canvas):
     COURUTINES.append(fill_orbit_with_garbage(canvas, garbages))
     
     # проверка корректности отрисовки OBSTACLES
-    # COURUTINES.append(show_obstacles(canvas, OBSTACLES))
+    COURUTINES.append(show_obstacles(canvas, OBSTACLES))
 
     while True:
         for courutine in COURUTINES.copy():
