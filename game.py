@@ -5,8 +5,9 @@ import curses
 from random import randint, choice
 from itertools import cycle
 from physics import update_speed
-from curses_tools import draw_frame
+from curses_tools import draw_frame, get_frame_size
 from obstacles import Obstacle, show_obstacles
+from explosion import explode
 
 
 SPACE_KEY_CODE = 32
@@ -29,15 +30,6 @@ def read_frame(filename):
 def load_garbages():
     
     return [read_frame(os.path.join('frames',filename)) for filename in os.listdir('frames') if filename.startswith('trash_')]
-    
-
-def get_frame_size(text):
-    """Calculate size of multiline text fragment, return pair — number of rows and colums."""
-    
-    lines = text.splitlines()
-    rows = len(lines)
-    columns = max([len(line) for line in lines])
-    return rows, columns
 
 
 def read_controls(canvas):
@@ -102,6 +94,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         if barrier in OBSTACLES_IN_LAST_COLLISIONS:
             OBSTACLES.remove(barrier)
             OBSTACLES_IN_LAST_COLLISIONS.remove(barrier)
+            COURUTINES.append(explode(canvas, row + garbage_height // 2, column + garbage_width // 2))
             return
 
     OBSTACLES.remove(barrier)
@@ -128,8 +121,8 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
     border_row = max_rows - frame_row - 1
     border_col = max_columns - frame_col -1
     
-    offset_row = 1
-    offset_col = 2
+    offset_row = 2
+    offset_col = 4
     
     draw_frame(canvas, row, column, first)
     await sleep()
@@ -150,15 +143,7 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
         first = second
         
         if space_pressed:
-            COURUTINES.append(
-                fire(
-                    canvas,
-                    row + row_speed * offset_row,
-                    column + frame_col // 2 + col_speed * offset_col,
-                    rows_speed=-1,
-                    columns_speed=0
-                )
-            )           
+            COURUTINES.append(fire(canvas, row, column, rows_speed=-1, columns_speed=0))           
 
         await sleep()
 
@@ -245,7 +230,7 @@ def draw(canvas):
     COURUTINES.append(fill_orbit_with_garbage(canvas, garbages))
     
     # проверка корректности отрисовки OBSTACLES
-    COURUTINES.append(show_obstacles(canvas, OBSTACLES))
+    # COURUTINES.append(show_obstacles(canvas, OBSTACLES))
 
     while True:
         for courutine in COURUTINES.copy():
