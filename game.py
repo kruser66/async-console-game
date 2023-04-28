@@ -9,6 +9,7 @@ from curses_tools import draw_frame, get_frame_size
 from obstacles import Obstacle, show_obstacles
 from explosion import explode
 
+YEAR = 1957
 
 SPACE_KEY_CODE = 32
 LEFT_KEY_CODE = 260
@@ -19,6 +20,34 @@ DOWN_KEY_CODE = 258
 COURUTINES = []
 OBSTACLES = []
 OBSTACLES_IN_LAST_COLLISIONS = []
+
+PHRASES = {
+    # Только на английском, Repl.it ломается на кириллице
+    1957: "First Sputnik",
+    1961: "Gagarin flew!",
+    1969: "Armstrong got on the moon!",
+    1971: "First orbital space station Salute-1",
+    1981: "Flight of the Shuttle Columbia",
+    1998: 'ISS start building',
+    2011: 'Messenger launch to Mercury',
+    2020: "Take the plasma gun! Shoot the garbage!",
+}
+
+def get_garbage_delay_tics(year):
+    if year < 1961:
+        return None
+    elif year < 1969:
+        return 20
+    elif year < 1981:
+        return 14
+    elif year < 1995:
+        return 10
+    elif year < 2010:
+        return 8
+    elif year < 2020:
+        return 6
+    else:
+        return 2
 
 
 def read_frame(filename):
@@ -104,16 +133,35 @@ async def fill_orbit_with_garbage(canvas, garbages):
     max_rows, max_columns = canvas.getmaxyx()  
 
     while True:
-        offset = randint(5, 30)
-        await sleep(offset)
-        garbage = choice(garbages)
-        COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
+        offset = get_garbage_delay_tics(YEAR)
+        if offset:
+            await sleep(offset)
+            garbage = choice(garbages)
+            COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
+        else:
+            await sleep()
 
 
 async def game_over(canvas, row, column, frame):
     while True:
         draw_frame(canvas, row, column, frame)
         await sleep()
+
+
+async def years_counter(canvas):
+    global YEAR
+    
+    while True:
+        if YEAR <= 2020:
+            phrase = PHRASES.get(YEAR, '')
+        if phrase:
+            year_text = f'{str(YEAR)} {phrase}'
+        else:
+            year_text = f'{str(YEAR)}                                         '
+        canvas.addstr(1, 1, year_text)
+        await sleep(15)
+        YEAR += 1
+
 
 async def animate_spaceship(canvas, frames, row=20, column=20):
 
@@ -154,7 +202,7 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
         draw_frame(canvas, row, column, second)
         first = second
         
-        if space_pressed:
+        if space_pressed and YEAR >= 2020:
             COURUTINES.append(fire(canvas, row, column, rows_speed=-1, columns_speed=0))           
 
         await sleep()
@@ -192,7 +240,6 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
                 OBSTACLES_IN_LAST_COLLISIONS.append(obstacle)
                 row = 1
             
-
 
 async def blink(canvas, row, column, offset_tics=0, symbol='*'):
     while True:
@@ -240,6 +287,7 @@ def draw(canvas):
         COURUTINES.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
     COURUTINES.append(animate_spaceship(canvas, spaceship, center_row, center_col))
     COURUTINES.append(fill_orbit_with_garbage(canvas, garbages))
+    COURUTINES.append(years_counter(canvas))
     
     # проверка корректности отрисовки OBSTACLES
     # COURUTINES.append(show_obstacles(canvas, OBSTACLES))
