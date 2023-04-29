@@ -6,7 +6,7 @@ from random import randint, choice
 from itertools import cycle
 from physics import update_speed
 from curses_tools import draw_frame, get_frame_size
-from obstacles import Obstacle, show_obstacles
+from obstacles import Obstacle
 from explosion import explode
 from game_scenario import get_garbage_delay_tics, PHRASES
 
@@ -19,9 +19,9 @@ RIGHT_KEY_CODE = 261
 UP_KEY_CODE = 259
 DOWN_KEY_CODE = 258
 
-COURUTINES = []
-OBSTACLES = []
-OBSTACLES_IN_LAST_COLLISIONS = []
+courutines = []
+obstacles = []
+obstacles_in_last_collision = []
 
 
 def read_frame(filename):
@@ -85,7 +85,7 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
 
     row = start_row
     barrier = Obstacle(row, column, garbage_height, garbage_width)
-    OBSTACLES.append(barrier)    
+    obstacles.append(barrier)    
 
     while row < rows_number - (garbage_height + 1):
  
@@ -94,24 +94,24 @@ async def fly_garbage(canvas, column, garbage_frame, speed=0.5):
         draw_frame(canvas, row, column, garbage_frame, negative=True)
         row += speed
         barrier.row += speed
-        if barrier in OBSTACLES_IN_LAST_COLLISIONS:
-            OBSTACLES.remove(barrier)
-            OBSTACLES_IN_LAST_COLLISIONS.remove(barrier)
-            COURUTINES.append(explode(canvas, row + garbage_height // 2, column + garbage_width // 2))
+        if barrier in obstacles_in_last_collision:
+            obstacles.remove(barrier)
+            obstacles_in_last_collision.remove(barrier)
+            courutines.append(explode(canvas, row + garbage_height // 2, column + garbage_width // 2))
             return
 
-    OBSTACLES.remove(barrier)
+    obstacles.remove(barrier)
 
 
 async def fill_orbit_with_garbage(canvas, garbages):
-    max_rows, max_columns = canvas.getmaxyx()  
+    _, max_columns = canvas.getmaxyx()  
 
     while True:
         offset = get_garbage_delay_tics(YEAR)
         if offset:
             await sleep(offset)
             garbage = choice(garbages)
-            COURUTINES.append(fly_garbage(canvas, randint(1, max_columns), garbage))
+            courutines.append(fly_garbage(canvas, randint(1, max_columns), garbage))
         else:
             await sleep()
 
@@ -162,18 +162,18 @@ async def animate_spaceship(canvas, frames, row=20, column=20):
         row = max(1, min(row + row_speed * offset_row, border_row))
         column = max(1, min(column + col_speed * offset_col, border_col))  
 
-        for obstacle in OBSTACLES:
+        for obstacle in obstacles:
             if obstacle.has_collision(row, column, frame_row, frame_col):
                 game_over_frame = read_frame('frames/game_over.txt')
                 width, height = get_frame_size(game_over_frame)
-                COURUTINES.append(game_over(canvas, (max_rows - width) // 2, (max_columns - height) // 2, game_over_frame))
+                courutines.append(game_over(canvas, (max_rows - width) // 2, (max_columns - height) // 2, game_over_frame))
                 return
                                    
         draw_frame(canvas, row, column, second)
         first = second
         
         if space_pressed and YEAR >= 2020:
-            COURUTINES.append(fire(canvas, row, column, rows_speed=-1, columns_speed=0))           
+            courutines.append(fire(canvas, row, column, rows_speed=-1, columns_speed=0))           
 
         await sleep()
 
@@ -205,9 +205,9 @@ async def fire(canvas, start_row, start_column, rows_speed=-0.3, columns_speed=0
         canvas.addstr(round(row), round(column), ' ')
         row += rows_speed
         column += columns_speed
-        for obstacle in OBSTACLES:
+        for obstacle in obstacles:
             if obstacle.has_collision(row, column):
-                OBSTACLES_IN_LAST_COLLISIONS.append(obstacle)
+                obstacles_in_last_collision.append(obstacle)
                 row = 1
             
 
@@ -251,23 +251,19 @@ def draw(canvas):
     end_row = max_rows - border
     end_col = max_columns - border
     
-
     for item in range(200):
         offset_tics = randint(1, 20)
-        COURUTINES.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
-    COURUTINES.append(animate_spaceship(canvas, spaceship, center_row, center_col))
-    COURUTINES.append(fill_orbit_with_garbage(canvas, garbages))
-    COURUTINES.append(years_counter(canvas))
-    
-    # проверка корректности отрисовки OBSTACLES
-    # COURUTINES.append(show_obstacles(canvas, OBSTACLES))
+        courutines.append(blink(canvas, randint(srart_row, end_row), randint(start_col, end_col), offset_tics, choice('+*.:')))
+    courutines.append(animate_spaceship(canvas, spaceship, center_row, center_col))
+    courutines.append(fill_orbit_with_garbage(canvas, garbages))
+    courutines.append(years_counter(canvas))
 
     while True:
-        for courutine in COURUTINES.copy():
+        for courutine in courutines.copy():
             try:
                 courutine.send(None)
             except StopIteration:
-                COURUTINES.remove(courutine)
+                courutines.remove(courutine)
         canvas.refresh()
         time.sleep(0.1)
 
